@@ -2398,7 +2398,7 @@ function renderBoard(){
   VIS=[];let h="";
   CORDER.forEach(k=>{const list=ITEMS.filter(i=>i.c===k&&ok(i));if(!list.length)return;VIS.push(...list.map(i=>i.id));
     h+=`<div class="bsec"><div class="bsec-h"><span class="dot" style="background:${CATS[k].c}"></span><b>${CATS[k].t}</b></div>
-     <div class="bgrid">${list.map(tileHTML).join("")}</div><button class="addbtn" onclick="openForm('${k}')">＋ Thêm content</button></div>`});
+     <div class="bgrid">${list.map(tileHTML).join("")}</div></div>`});
   document.querySelectorAll("#bfG .cnt").forEach((el,n)=>el.textContent=ITEMS.filter(i=>i.c===CORDER[n]).length);
   $("#boardBody").innerHTML=h||`<div class="card muted">Không có mục phù hợp.</div>`;
   tileThumbs();
@@ -2667,7 +2667,7 @@ function renderBell(){
     <div class="nt-bub"><div class="nt-meta"><b>${esc(p.author||"Thành viên")}</b> · ${timeAgo(p.created)}${un?' <span class="nt-new">Mới</span>':""}</div>
      <div>Vừa thêm content <b>${p.id}</b> vào tuyến <b>${esc(CATS[catOf(p)].t)}</b>:</div><div class="nt-hook">“${esc(p.hook)}”</div>
      <button class="nt-go" onclick="ntClose();openPost('${p.id}')">Xem content →</button></div></div>`}).join("")
-    :`<div class="nt-empty">Chưa có content mới. Bấm “＋ Thêm content” ở cuối mỗi tuyến trong Các tuyến nội dung chính để thêm.</div>`;
+    :`<div class="nt-empty">Chưa có content mới.</div>`;
   gsStatus()}
 function ntToggle(){NT.open=!NT.open;$("#ntPanel").classList.toggle("on",NT.open);if(NT.open){$("#ntPop").classList.remove("on");renderBell()}}
 function ntClose(){NT.open=false;$("#ntPanel").classList.remove("on")}
