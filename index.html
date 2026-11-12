@@ -373,11 +373,39 @@ html{-webkit-text-size-adjust:100%}
   .nt-panel{right:8px;left:8px;width:auto;bottom:calc(76px + env(safe-area-inset-bottom));height:calc(100dvh - 96px)}
 }
 @media (max-width:360px){.bgrid{grid-template-columns:1fr}}
+.expwrap{position:relative;display:inline-flex}
+.expmenu{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:40;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,40,50,.18);padding:6px;min-width:260px}
+.expmenu.on{display:block}
+.expmenu button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--ink);font:inherit}
+.expmenu button:hover{background:var(--bg)}
+.expmenu b{display:block;font-size:14px}.expmenu small{display:block;font-size:12px;color:var(--ink-3)}
+#printArea{display:none}
+@media (max-width:640px){.expwrap,.bbar .fbar>.btn{flex:1 1 0}.expwrap>.btn,.bbar .fbar>.btn{width:100%;justify-content:center}.expmenu{left:0;right:auto}}
 @media print{
-  .md,.bbar,nav.tabs,.tools,.side,.fbar,.mini,.sidebtns{display:none!important}
-  section.sheet{display:block!important;page-break-before:always}
-  .post{grid-template-columns:1fr;break-inside:avoid}
-  body{background:#fff}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff!important}
+  .nt-fab,.nt-pop,.nt-panel,.toast,.lb{display:none!important}
+  /* In bảng dạng lưới ô */
+  body.print-board header.top,body.print-board .md,body.print-board #printArea,body.print-board .expwrap,body.print-board .bbar .btn,body.print-board #bfQ{display:none!important}
+  body.print-board nav.tabs,body.print-board .bbar{position:static!important;box-shadow:none}
+  body.print-board{background:var(--bg)!important}
+  body.print-board .bgrid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px}
+  body.print-board .tile{break-inside:avoid;min-height:0;box-shadow:none}
+  body.print-board .bsec{break-inside:auto}
+  body.print-board .bsec-h{break-after:avoid}
+  body.print-board .tile .th img{height:96px}
+  /* In riêng 1 bài */
+  body.print-item>*:not(#printArea){display:none!important}
+  body.print-item #printArea{display:block!important;color:#1f3b41;font-size:10.5pt}
+  .pr-cover{border-bottom:3px solid #00a6b8;padding-bottom:8px;margin-bottom:12px}
+  .pr-logo{font-weight:700;color:#0d5c66;font-size:10pt}
+  .pr-cover h1{font-size:18pt;margin:4px 0 0}
+  .pr-meta{display:grid;grid-template-columns:42mm 1fr;gap:4px 10px;margin:0 0 12px;padding:8px 10px;border:1px dashed #cfdde0;border-radius:8px;font-size:10pt}
+  .pr-meta dt{color:#5e7a80;font-weight:600}.pr-meta dd{margin:0}
+  .pr-imgs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .pr-imgs img{max-width:85mm;max-height:110mm;border-radius:6px;break-inside:avoid}
+  .pr-h{font-size:12pt;margin:8px 0 6px;color:#0d5c66}
+  .pr-content{white-space:pre-wrap;font-size:10pt;line-height:1.5}
 }
 </style>
 </head>
@@ -397,6 +425,7 @@ html{-webkit-text-size-adjust:100%}
 <nav class="tabs"><div class="wrap" id="tabs"></div></nav>
 
 <main><div class="wrap" id="sheets"></div></main>
+<div id="printArea"></div>
 
 <button class="nt-fab" id="ntFab" onclick="ntToggle()" aria-label="Thông báo content mới">🔔<em>0</em></button>
 <div class="nt-pop" id="ntPop" onclick="ntToggle()"></div>
@@ -2369,7 +2398,7 @@ function sheetBoard(){
   return `<section class="sheet" id="s-board">
    <div class="bbar">
     <div class="fbar" id="bfG">${CORDER.map(k=>`<button class="chip ${BF.g===k?"on":""}" data-bg="${k}"><span style="color:${CATS[k].c}">●</span> ${CATS[k].t} (<span class="cnt">${ITEMS.filter(i=>i.c===k).length}</span>)</button>`).join("")}</div>
-    <div class="fbar" style="margin-top:8px"><span style="flex:1"></span><input class="search" id="bfQ" placeholder="Tìm mã bài, chủ đề…"></div>
+    <div class="fbar" style="margin-top:8px"><span style="flex:1"></span><input class="search" id="bfQ" placeholder="Tìm mã bài, chủ đề…"><span class="expwrap"><button class="btn" type="button" onclick="toggleExport(event)">⬇ Xuất ▾</button><span class="expmenu" id="expMenu"><button type="button" onclick="exportXLSX()"><b>Excel (.xlsx)</b><small>Bảng danh sách content theo tuyến</small></button><button type="button" onclick="exportPPTX()"><b>PowerPoint (.pptx)</b><small>Mỗi content 1 slide, kèm hình thiết kế</small></button></span></span><button class="btn" type="button" onclick="printBoard()">🖨 In</button></div>
    </div>
    <div id="boardBody"></div></section>`;
 }
@@ -2404,7 +2433,7 @@ function openItem(id){
   const k=VIS.indexOf(id);
   const T=i.type==="new"?["Thông tin mới","p-new"]:["Thông tin trọng điểm","p-key"];
   $("#mdHead").innerHTML=`<span class="pid">${i.id}</span>${i.g==="ads"?`<span class="pill" style="background:${i.col}22;color:${i.col}">Ads · ${PRODS[i.ad.prod]}</span>`:`<span class="pill ${T[1]}">${T[0]}</span>`}<span class="pill p-line"><span style="color:${CATS[i.c].c}">●</span>&nbsp;${CATS[i.c].t}</span>
-   <span style="flex:1"></span><span class="tiny">${k+1}/${VIS.length}</span><button class="btn sm" onclick="navItem(-1)" title="Mục trước (←)">‹</button><button class="btn sm" onclick="navItem(1)" title="Mục sau (→)">›</button><button class="btn sm" onclick="closeItem()" title="Đóng (Esc)">✕</button>`;
+   <span style="flex:1"></span><span class="tiny">${k+1}/${VIS.length}</span><button class="btn sm" onclick="printItem('${i.id}')" title="In bài này">🖨 In</button><button class="btn sm" onclick="navItem(-1)" title="Mục trước (←)">‹</button><button class="btn sm" onclick="navItem(1)" title="Mục sau (→)">›</button><button class="btn sm" onclick="closeItem()" title="Đóng (Esc)">✕</button>`;
   $("#mdBody").innerHTML=i.g==="ads"?adDetail(i.ad):postDetail(i.post);
   $("#md").classList.add("on");document.body.style.overflow="hidden";$("#mdBody").scrollTop=0;
   bindDrops();
@@ -2866,6 +2895,108 @@ const originalDbAll=dbAll;
 dbAll=async function(){return PACKAGED_IMAGES.concat(await originalDbAll())};
 const originalDbDel=dbDel;
 dbDel=async function(key){const i=PACKAGED_IMAGES.findIndex(o=>o.key===key);if(i>=0){PACKAGED_IMAGES.splice(i,1);return}return originalDbDel(key)};
+
+
+/* ===================== XUẤT EXCEL / POWERPOINT · IN ===================== */
+const EXP_LIB = {xlsx:"https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",pptx:"https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"};
+function loadLib(k){return new Promise((res,rej)=>{if(k==="xlsx"&&window.XLSX)return res();if(k==="pptx"&&window.PptxGenJS)return res();
+  const s=document.createElement("script");s.src=EXP_LIB[k];s.onload=()=>res();s.onerror=()=>rej(new Error("Không tải được thư viện xuất file - kiểm tra kết nối mạng"));document.head.appendChild(s)})}
+function expItems(){renderBoard();return VIS.map(id=>ITEMS.find(i=>i.id===id)).filter(Boolean)}
+function expScope(){return BF.g!=="all"&&CATS[BF.g]?CATS[BF.g].t:"Tat ca tuyen"}
+function expName(ext){const d=new Date(),p=n=>String(n).padStart(2,"0");return `GreenSM_2W_Thu_vien_content_${expScope().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/g,"d").replace(/Đ/g,"D").replace(/[^A-Za-z0-9]+/g,"_")}_${p(d.getDate())}${p(d.getMonth()+1)}${d.getFullYear()}.${ext}`}
+function itemData(i){
+  const pr=probOf(i.id)||{};
+  if(i.ad){const a=i.ad;return {tuyen:CATS[i.c].t,title:i.title,aud:a.who,model:a.name,prob:pr.n||"-",msg:a.usp.join(" · "),ch:"Facebook / Instagram / Zalo / TikTok Ads",fmt:i.sub,content:"BẢN A\n"+a.primary[0]+"\n\nBẢN B\n"+a.primary[1]+"\n\nHeadline: "+a.heads.join(" | ")}}
+  const p=i.post;return {tuyen:CATS[i.c].t,title:p.hook,aud:p.aud||"-",model:p.prod?PRODS[p.prod]:(p.model||"-"),prob:pr.n||"-",msg:p.msg||pr.msg||"-",ch:p.ch||"-",fmt:p.fmt||"-",content:postText(p)};
+}
+function toggleExport(ev){ev&&ev.stopPropagation();$("#expMenu").classList.toggle("on")}
+document.addEventListener("click",ev=>{const m=$("#expMenu");if(m&&!ev.target.closest(".expwrap"))m.classList.remove("on")});
+let EXP_BUSY=false;
+async function exportXLSX(){
+  $("#expMenu").classList.remove("on");if(EXP_BUSY)return;EXP_BUSY=true;toast("Đang tạo file Excel…");
+  try{await loadLib("xlsx");
+    const items=expItems();
+    const head=["STT","Tuyến nội dung","Topic","Đối tượng","Mô hình vận doanh","Vấn đề giải quyết","Thông điệp truyền tải","Kênh đăng","Định dạng","Nội dung bài đăng"];
+    const rows=items.map((i,n)=>{const d=itemData(i);return [n+1,d.tuyen,d.title,d.aud,d.model,d.prob,d.msg,d.ch,d.fmt,d.content]});
+    const ws=XLSX.utils.aoa_to_sheet([head,...rows]);
+    ws["!cols"]=[{wch:5},{wch:22},{wch:48},{wch:30},{wch:22},{wch:34},{wch:44},{wch:30},{wch:24},{wch:90}];
+    ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:head.length-1}})};
+    ws["!freeze"]={xSplit:0,ySplit:1};ws["!views"]=[{state:"frozen",ySplit:1}];
+    const sum=[["Tuyến nội dung","Số topic"],...CORDER.map(k=>[CATS[k].t,items.filter(i=>i.c===k).length]),["Tổng",items.length]];
+    const ws2=XLSX.utils.aoa_to_sheet(sum);ws2["!cols"]=[{wch:26},{wch:10}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Danh sách content");XLSX.utils.book_append_sheet(wb,ws2,"Tổng hợp");
+    XLSX.writeFile(wb,expName("xlsx"));toast(`Đã xuất Excel: ${items.length} mục`);
+  }catch(e){toast(e.message||"Xuất Excel lỗi")}finally{EXP_BUSY=false}
+}
+/* ảnh đầu tiên của mỗi mục, chuyển sang JPEG để PowerPoint đọc được */
+async function firstImages(items){
+  const all=(await dbAll()).sort((a,b)=>a.added-b.added),out={};
+  for(const i of items){const o=all.find(x=>x.post===i.id);if(!o||!o.blob)continue;
+    try{const url=URL.createObjectURL(o.blob);const img=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=url});
+      const k=Math.min(1,1200/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement("canvas");c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);
+      const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+      out[i.id]={data:c.toDataURL("image/jpeg",0.8),w:c.width,h:c.height}}catch(e){}}
+  return out}
+function chunkText(t,maxLines,perLine){const lines=String(t).split("\n");const chunks=[];let cur=[],n=0;
+  lines.forEach(l=>{const v=Math.max(1,Math.ceil(l.length/perLine));if(n+v>maxLines&&cur.length){chunks.push(cur.join("\n"));cur=[];n=0}cur.push(l);n+=v});if(cur.length)chunks.push(cur.join("\n"));return chunks}
+async function exportPPTX(){
+  $("#expMenu").classList.remove("on");if(EXP_BUSY)return;EXP_BUSY=true;toast("Đang tạo file PowerPoint…");
+  try{await loadLib("pptx");
+    const items=expItems(),imgs=await firstImages(items);
+    const P=new PptxGenJS();P.layout="LAYOUT_WIDE";P.author="Green SM - 2W";P.title="Tài liệu truyền thông - Tuyển dụng tài xế 2W";
+    const FONT="Arial",INK="1F3B41",MUTE="5E7A80";
+    let s=P.addSlide();s.background={color:"0D5C66"};
+    s.addText("Green SM - 2W",{x:0.7,y:1.3,w:6,h:0.5,fontFace:FONT,fontSize:16,bold:true,color:"9BF0C0"});
+    s.addText("Tài liệu truyền thông - Tuyển dụng tài xế 2W",{x:0.7,y:1.9,w:11.5,h:1.4,fontFace:FONT,fontSize:40,bold:true,color:"FFFFFF"});
+    s.addText("“Mùa đông Xanh - Vì tương lai Xanh” (08/11/2026 - 28/02/2027)",{x:0.7,y:3.4,w:11.5,h:0.5,fontFace:FONT,fontSize:18,color:"DFF7F5"});
+    s.addText(CORDER.filter(k=>items.some(i=>i.c===k)).map(k=>`${CATS[k].t}: ${items.filter(i=>i.c===k).length} mục`).join("   ·   "),{x:0.7,y:5.6,w:12,h:0.8,fontFace:FONT,fontSize:13,color:"FFFFFF"});
+    for(const k of CORDER){const list=items.filter(i=>i.c===k);if(!list.length)continue;const col=CATS[k].c.replace("#","");
+      s=P.addSlide();s.background={color:col};
+      s.addText(CATS[k].t,{x:0.7,y:2.5,w:12,h:1.2,fontFace:FONT,fontSize:44,bold:true,color:"FFFFFF"});
+      s.addText(`${list.length} mục`,{x:0.7,y:3.7,w:12,h:0.6,fontFace:FONT,fontSize:20,color:"FFFFFF"});
+      for(const i of list){const d=itemData(i),im=imgs[i.id];
+        const hasImg=!!im,tx=hasImg?5.2:0.6,tw=hasImg?7.6:12.1;
+        const parts=chunkText(d.content,hasImg?20:22,hasImg?92:150);
+        parts.forEach((part,pi)=>{s=P.addSlide();s.background={color:"FFFFFF"};
+          s.addShape(P.ShapeType.rect,{x:0,y:0,w:0.18,h:7.5,fill:{color:col},line:{color:col}});
+          s.addText(d.tuyen.toUpperCase(),{x:tx,y:0.3,w:tw,h:0.3,fontFace:FONT,fontSize:10,bold:true,color:col});
+          s.addText(d.title+(pi?" (tiếp)":""),{x:tx,y:0.6,w:tw,h:0.9,fontFace:FONT,fontSize:20,bold:true,color:INK,valign:"top",fit:"shrink"});
+          if(hasImg&&pi===0){const bw=4.3,bh=6.4,r=Math.min(bw/im.w,bh/im.h),w=im.w*r,h=im.h*r;s.addImage({data:im.data,x:0.5+(bw-w)/2,y:0.55+(bh-h)/2,w,h})}
+          let y=1.55;
+          if(pi===0){s.addTable([[{text:"Đối tượng",options:{bold:true,color:MUTE}},{text:d.aud}],[{text:"Mô hình vận doanh",options:{bold:true,color:MUTE}},{text:d.model}],[{text:"Vấn đề giải quyết",options:{bold:true,color:MUTE}},{text:d.prob}],[{text:"Thông điệp truyền tải",options:{bold:true,color:MUTE}},{text:d.msg}]],
+              {x:tx,y,w:tw,colW:[1.9,tw-1.9],fontFace:FONT,fontSize:9.5,color:INK,border:{type:"solid",pt:0.5,color:"DCE6E8"},fill:{color:"F4F8F9"},margin:0.05});
+            y=3.05}
+          s.addText(part,{x:tx,y,w:tw,h:7.15-y,fontFace:FONT,fontSize:pi===0?9.5:10,color:INK,valign:"top",fit:"shrink",paraSpaceAfter:2});
+        });
+      }
+    }
+    await P.writeFile({fileName:expName("pptx")});toast(`Đã xuất PowerPoint: ${items.length} mục`);
+  }catch(e){console.error(e);toast(e.message||"Xuất PowerPoint lỗi")}finally{EXP_BUSY=false}
+}
+function setPrintMode(mode){document.body.classList.remove("print-board","print-item");document.body.classList.add("print-"+mode);
+  let st=document.getElementById("pageStyle");if(!st){st=document.createElement("style");st.id="pageStyle";document.head.appendChild(st)}
+  st.textContent=mode==="board"?"@page{size:A4 landscape;margin:8mm}":"@page{size:A4 portrait;margin:12mm}"}
+/* In bảng: giữ đúng giao diện lưới ô như trên màn hình */
+async function printBoard(){
+  $("#expMenu").classList.remove("on");closeItem();
+  await tileThumbs();
+  const imgs=[...document.querySelectorAll("#boardBody img")];
+  await Promise.all(imgs.map(im=>im.complete?1:new Promise(r=>{im.onload=im.onerror=r})));
+  setPrintMode("board");setTimeout(()=>window.print(),80);
+}
+/* In riêng 1 bài: topic, 4 hạng mục, hình thiết kế và nội dung */
+async function printItem(id){
+  const i=ITEMS.find(x=>x.id===id);if(!i)return;
+  const all=(await dbAll()).sort((a,b)=>a.added-b.added),d=itemData(i),list=all.filter(x=>x.post===i.id||(i.g==="ads"&&x.post.startsWith(i.id+"-")));
+  const pa=$("#printArea");
+  pa.innerHTML=`<div class="pr-cover"><div class="pr-logo">Green SM - 2W · ${esc(d.tuyen)}</div><h1>${esc(d.title)}</h1></div>
+   <dl class="pr-meta"><dt>Đối tượng</dt><dd>${esc(d.aud)}</dd><dt>Mô hình vận doanh</dt><dd>${esc(d.model)}</dd><dt>Vấn đề giải quyết</dt><dd>${esc(d.prob)}</dd><dt>Thông điệp truyền tải</dt><dd>${esc(d.msg)}</dd></dl>
+   ${list.length?`<div class="pr-imgs">${list.map(o=>`<img src="${blobURL(o)}" alt="">`).join("")}</div>`:""}
+   <h2 class="pr-h">Nội dung bài đăng</h2><div class="pr-content">${esc(d.content)}</div>`;
+  await Promise.all([...pa.querySelectorAll("img")].map(im=>im.complete?1:new Promise(r=>{im.onload=im.onerror=r})));
+  setPrintMode("item");setTimeout(()=>window.print(),80);
+}
+window.addEventListener("afterprint",()=>{const pa=$("#printArea");if(pa)pa.innerHTML="";document.body.classList.remove("print-board","print-item")});
 
 /* ===== Khởi tạo ===== */
 (async function init(){
